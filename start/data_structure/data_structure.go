@@ -67,7 +67,6 @@ func map_example() {
 	m1["B"] = 2
 	m1["C"] = 5
 
-
 	fmt.Println(m1)
 
 	// get value by key

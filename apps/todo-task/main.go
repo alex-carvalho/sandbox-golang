@@ -28,30 +28,9 @@ func (app *TodoApp) nextID() int {
 	return len(app.tasks) + 1
 }
 
-func (app *TodoApp) list(filter string) {
-	if len(app.tasks) == 0 {
-		fmt.Println("📭 No tasks found")
-		return
-	}
-	
-	fmt.Println("\n📋 Tasks:")
-	for _, task := range app.tasks {
-		if filter == "completed" && !task.Completed {
-			continue
-		}
-		if filter == "pending" && task.Completed {
-			continue
-		}
-		
-		status := "⭕"
-		if task.Completed {
-			status = "✅"
-		}
-		fmt.Printf("%d. %s %s\n", task.ID, status, task.Title)
-	}
-}
 
-func (app *TodoApp) create(title string) {
+
+func (app *TodoApp) create(title string) *Task {
 	task := Task{
 		ID:        app.nextID(),
 		Title:     title,
@@ -59,46 +38,50 @@ func (app *TodoApp) create(title string) {
 		CreatedAt: time.Now(),
 	}
 	app.tasks = append(app.tasks, task)
-	fmt.Printf("✓ Created task: %s\n", title)
+	return &task
 }
 
-func (app *TodoApp) complete(id int) {
+func (app *TodoApp) complete(id int) error {
 	for i := range app.tasks {
 		if app.tasks[i].ID == id {
 			app.tasks[i].Completed = true
-			fmt.Printf("✓ Completed task: %s\n", app.tasks[i].Title)
-			return
+			return nil
 		}
 	}
-	fmt.Printf("❌ Task %d not found\n", id)
+	return fmt.Errorf("task %d not found", id)
 }
 
-func (app *TodoApp) remove(id int) {
+func (app *TodoApp) remove(id int) error {
 	for i, task := range app.tasks {
 		if task.ID == id {
 			app.tasks = append(app.tasks[:i], app.tasks[i+1:]...)
-			fmt.Printf("🗑️  Removed task: %s\n", task.Title)
-			return
+			return nil
 		}
 	}
-	fmt.Printf("❌ Task %d not found\n", id)
+	return fmt.Errorf("task %d not found", id)
 }
 
-func (app *TodoApp) details(id int) {
+func (app *TodoApp) getTask(id int) (*Task, error) {
 	for _, task := range app.tasks {
 		if task.ID == id {
-			status := "Pending"
-			if task.Completed {
-				status = "Completed"
-			}
-			fmt.Printf("ID: %d\n", task.ID)
-			fmt.Printf("Title: %s\n", task.Title)
-			fmt.Printf("Status: %s\n", status)
-			fmt.Printf("Created: %s\n", task.CreatedAt.Format("2006-01-02 15:04:05"))
-			return
+			return &task, nil
 		}
 	}
-	fmt.Printf("Task %d not found\n", id)
+	return nil, fmt.Errorf("task %d not found", id)
+}
+
+func (app *TodoApp) getTasks(filter string) []Task {
+	var filtered []Task
+	for _, task := range app.tasks {
+		if filter == "completed" && !task.Completed {
+			continue
+		}
+		if filter == "pending" && task.Completed {
+			continue
+		}
+		filtered = append(filtered, task)
+	}
+	return filtered
 }
 
 func (app *TodoApp) showHelp() {
@@ -126,7 +109,19 @@ func (app *TodoApp) processCommand(input string) bool {
 		if len(parts) > 1 {
 			filter = parts[1]
 		}
-		app.list(filter)
+		tasks := app.getTasks(filter)
+		if len(tasks) == 0 {
+			fmt.Println("📭 No tasks found")
+		} else {
+			fmt.Println("\n📋 Tasks:")
+			for _, task := range tasks {
+				status := "⭕"
+				if task.Completed {
+					status = "✅"
+				}
+				fmt.Printf("%d. %s %s\n", task.ID, status, task.Title)
+			}
+		}
 		
 	case "create":
 		if len(parts) < 2 {
@@ -134,7 +129,8 @@ func (app *TodoApp) processCommand(input string) bool {
 			return true
 		}
 		title := strings.Join(parts[1:], " ")
-		app.create(title)
+		task := app.create(title)
+		fmt.Printf("✓ Created task: %s\n", task.Title)
 		
 	case "complete":
 		if len(parts) < 2 {
@@ -146,7 +142,11 @@ func (app *TodoApp) processCommand(input string) bool {
 			fmt.Println("❌ Invalid task ID")
 			return true
 		}
-		app.complete(id)
+		if err := app.complete(id); err != nil {
+			fmt.Printf("❌ %v\n", err)
+		} else {
+			fmt.Printf("✓ Task completed\n")
+		}
 		
 	case "remove":
 		if len(parts) < 2 {
@@ -158,7 +158,11 @@ func (app *TodoApp) processCommand(input string) bool {
 			fmt.Println("❌ Invalid task ID")
 			return true
 		}
-		app.remove(id)
+		if err := app.remove(id); err != nil {
+			fmt.Printf("❌ %v\n", err)
+		} else {
+			fmt.Printf("🗑️  Task removed\n")
+		}
 		
 	case "details":
 		if len(parts) < 2 {
@@ -170,7 +174,19 @@ func (app *TodoApp) processCommand(input string) bool {
 			fmt.Println("❌ Invalid task ID")
 			return true
 		}
-		app.details(id)
+		task, err := app.getTask(id)
+		if err != nil {
+			fmt.Printf("❌ %v\n", err)
+		} else {
+			status := "Pending"
+			if task.Completed {
+				status = "Completed"
+			}
+			fmt.Printf("ID: %d\n", task.ID)
+			fmt.Printf("Title: %s\n", task.Title)
+			fmt.Printf("Status: %s\n", status)
+			fmt.Printf("Created: %s\n", task.CreatedAt.Format("2006-01-02 15:04:05"))
+		}
 		
 	case "help":
 		app.showHelp()

@@ -93,7 +93,7 @@ func types() {
 	s1 := "Hello World, size:"
 	fmt.Println(s1, len(s1))
 
-	// string com multiplas linhas
+	// multi-line string
 	s2 := `multi
 	line
 	size:`

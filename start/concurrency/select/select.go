@@ -2,22 +2,38 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"regexp"
 	"time"
 )
 
 // <-chan - ready-only channel
+var titleRegex = regexp.MustCompile(`<title>(.*?)</title>`)
+
 func title(urls ...string) <-chan string {
 	c := make(chan string)
 	for _, url := range urls {
 		go func(url string) {
-			resp, _ := http.Get(url)
-			html, _ := ioutil.ReadAll(resp.Body)
+			resp, err := http.Get(url)
+			if err != nil {
+				c <- "Error: " + err.Error()
+				return
+			}
+			defer resp.Body.Close()
+			
+			html, err := io.ReadAll(resp.Body)
+			if err != nil {
+				c <- "Error reading body"
+				return
+			}
 
-			r, _ := regexp.Compile("<title>(.*?)<\\/title>")
-			c <- r.FindStringSubmatch(string(html))[1]
+			matches := titleRegex.FindStringSubmatch(string(html))
+			if len(matches) > 1 {
+				c <- matches[1]
+			} else {
+				c <- "No title found"
+			}
 		}(url)
 	}
 	return c
@@ -44,10 +60,10 @@ func fastest(url1, url2, url3 string) string {
 }
 
 func main() {
-	winer := fastest(
+	winner := fastest(
 		"https://www.youtube.com",
 		"https://www.amazon.com",
 		"https://www.google.com",
 	)
-	fmt.Println(winer)
+	fmt.Println(winner)
 }

@@ -21,6 +21,9 @@ func namedReturn() (first int, second string) {
 }
 
 func varargs(args ...float64) float64 {
+	if len(args) == 0 {
+		return 0
+	}
 	total := 0.0
 	for _, v := range args {
 		total += v

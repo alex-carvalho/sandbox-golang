@@ -16,8 +16,13 @@ func (p person) FullName() string {
 
 func setFullName(p *person, name string) {
 	names := strings.Split(name, " ")
-	p.firstName = names[0]
-	p.lastName = names[1]
+	if len(names) >= 2 {
+		p.firstName = names[0]
+		p.lastName = names[1]
+	} else if len(names) == 1 {
+		p.firstName = names[0]
+		p.lastName = ""
+	}
 }
 
 func main() {
